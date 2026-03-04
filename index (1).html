@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>학교 자리 배치 프로그램 (교탁 추가본)</title>
+    <title>학교 자리 배치 프로그램 (번호 출력 버전)</title>
     <style>
         body {
             font-family: 'Pretendard', sans-serif;
             display: flex; flex-direction: column; align-items: center;
             background-color: #f0f2f5; padding: 20px;
         }
-        /* 교탁 스타일 */
         #teacher-desk {
             width: 120px; height: 50px;
             background-color: #95a5a6; color: white;
@@ -25,14 +24,14 @@
             border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             visibility: hidden; 
         }
-        .grid-normal { grid-template-columns: repeat(8, 85px); }
-        .grid-exam { grid-template-columns: repeat(9, 85px); }
+        .grid-normal { grid-template-columns: repeat(8, 70px); }
+        .grid-exam { grid-template-columns: repeat(9, 70px); }
 
         .seat {
-            width: 80px; height: 60px; display: flex;
+            width: 65px; height: 60px; display: flex;
             justify-content: center; align-items: center;
             border: 2px solid #34495e; border-radius: 10px;
-            font-weight: bold; font-size: 0.95em;
+            font-weight: bold; font-size: 1.2em; /* 번호가 잘 보이도록 크기 조절 */
             background-color: #ebf5ff; cursor: pointer; transition: 0.2s;
             text-align: center;
         }
@@ -40,13 +39,11 @@
             background-color: #f8f9fa; border: 2px dashed #d1d8e0;
             color: #a5b1be; font-size: 0.8em; cursor: default;
         }
-        /* 완료 시 통로 투명화 */
         .finished .seat.empty {
             background-color: transparent !important;
             border: none !important;
             color: transparent !important;
         }
-        
         .seat.shuffling {
             animation: bounce 0.4s infinite;
             background-color: #fff9c4 !important;
@@ -86,7 +83,7 @@
 </head>
 <body>
 
-    <h1>🏫 학급 자리 배치 프로그램</h1>
+    <h1>🏫 학급 자리 배치 (번호 버전)</h1>
 
     <div id="controls">
         <button id="input-mode-button" onclick="toggleInputMode()">⚙️ 설정</button>
@@ -103,9 +100,9 @@
             <label><input type="radio" name="layout" value="exam"> 모의고사형 </label>
         </div>
         <hr>
-        <label for="total-end-number"><b>2. 마지막 번호</b></label>
+        <label for="total-end-number"><b>2. 학생 마지막 번호</b></label>
         <input type="number" id="total-end-number" value="31" min="1">
-        <label for="exclude-numbers"><b>3. 제외 번호</b></label>
+        <label for="exclude-numbers"><b>3. 제외할 번호</b></label>
         <input type="text" id="exclude-numbers" placeholder="예: 5, 12">
         <button onclick="applySettings()" style="background-color: #27ae60; margin-top:10px;">적용하기</button>
     </div>
@@ -117,8 +114,6 @@
     <div id="seating-chart"></div>
 
     <script>
-
-
         let allSeatNumbers = [];
         let seatingMap = [];
         let isSwapMode = false;
@@ -145,20 +140,19 @@
             const chart = document.getElementById('seating-chart');
             const desk = document.getElementById('teacher-desk');
             chart.style.visibility = 'visible';
-            desk.style.display = 'flex'; // 교탁 보이기
+            desk.style.display = 'flex';
             chart.className = currentLayout === 'exam' ? 'grid-exam' : 'grid-normal';
             chart.classList.remove('finished');
             
             document.getElementById('random-button').disabled = false;
             document.getElementById('swap-button').disabled = false;
             document.getElementById('complete-button').disabled = false;
-            document.getElementById('status').textContent = `✅ 배치가 준비되었습니다.`;
+            document.getElementById('status').textContent = `✅ 번호 배치가 준비되었습니다.`;
             toggleInputMode();
         }
 
         function buildMap(numbers) {
             const COLS = currentLayout === 'exam' ? 9 : 8;
-            // 자리를 한 칸 뒤로 밀기 위해 행을 하나 더 여유있게 생성
             let ROWS = (currentLayout === 'exam' && numbers.length > 30) ? 7 : 6;
             seatingMap = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 
@@ -208,7 +202,7 @@
             seatingMap.forEach((row, r) => {
                 const indicator = document.createElement('div');
                 indicator.className = `row-indicator ${spanClass}`;
-                indicator.textContent = `─── ${r + 1}분단 라인 ───`;
+                indicator.textContent = `─── ${r + 1}분단 ───`;
                 chart.appendChild(indicator);
                 row.forEach((cell, c) => {
                     const div = document.createElement('div');
@@ -220,7 +214,8 @@
                         div.classList.add('empty');
                         div.textContent = '';
                     } else {
-                        div.textContent = studentNames[cell] || cell;
+                        // 이름을 출력하는 대신 cell(번호)를 그대로 출력
+                        div.textContent = cell;
                         div.dataset.row = r; div.dataset.col = c;
                         div.onclick = handleSeatClick;
                     }
@@ -275,13 +270,12 @@
             const chart = document.getElementById('seating-chart');
             const isNowFinished = chart.classList.toggle('finished');
             if (isNowFinished) {
-                document.getElementById('status').textContent = "📌 최종 배치도 확정";
+                document.getElementById('status').textContent = "📌 최종 번호 배치도 확정";
                 isSwapMode = false;
             } else {
-                document.getElementById('status').textContent = "🛠 수정 모드";
+                document.getElementById('status').textContent = "🛠 수정 모드 (통로 보임)";
             }
         }
     </script>
 </body>
 </html>
-
