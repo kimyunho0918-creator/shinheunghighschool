@@ -3,127 +3,352 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>학교 자리 배치 프로그램 (번호 출력 버전)</title>
+    <title>프리미엄 학급 자리 배치표 (Dark Edition)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        
+        /* 🎨 CSS 변수 설정 (다크 테마) */
+        :root {
+            --bg-color: #0d1117;
+            --bg-gradient: radial-gradient(circle at 50% 0%, #1a2332 0%, #0d1117 70%);
+            --glass-bg: rgba(22, 27, 34, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent-purple: #a371f7;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --seat-bg: #21262d;
+            --seat-border: #30363d;
+            --seat-hover: #3b434b;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
             font-family: 'Pretendard', sans-serif;
+            background: var(--bg-color);
+            background-image: var(--bg-gradient);
+            color: var(--text-primary);
+            min-height: 100vh;
             display: flex; flex-direction: column; align-items: center;
-            background-color: #f0f2f5; padding: 20px;
+            padding: 40px 20px;
+            overflow-x: hidden;
         }
-        #teacher-desk {
-            width: 120px; height: 50px;
-            background-color: #95a5a6; color: white;
-            display: flex; justify-content: center; align-items: center;
-            border-radius: 5px; font-weight: bold; margin-bottom: 20px;
-            border: 2px solid #7f8c8d; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        #seating-chart {
-            display: grid;
-            gap: 12px; margin-bottom: 30px; padding: 25px;
-            border: 3px solid #2c3e50; background-color: #ffffff;
-            border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            visibility: hidden; 
-        }
-        .grid-normal { grid-template-columns: repeat(8, 70px); }
-        .grid-exam { grid-template-columns: repeat(9, 70px); }
 
-        .seat {
-            width: 65px; height: 60px; display: flex;
-            justify-content: center; align-items: center;
-            border: 2px solid #34495e; border-radius: 10px;
-            font-weight: bold; font-size: 1.2em; /* 번호가 잘 보이도록 크기 조절 */
-            background-color: #ebf5ff; cursor: pointer; transition: 0.2s;
-            text-align: center;
+        /* ---------------- 타이틀 ---------------- */
+        h1 {
+            font-size: 2.5rem; font-weight: 800; margin-bottom: 30px;
+            letter-spacing: -1px;
+            background: linear-gradient(to right, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(163, 113, 247, 0.3);
         }
-        .seat.empty {
-            background-color: #f8f9fa; border: 2px dashed #d1d8e0;
-            color: #a5b1be; font-size: 0.8em; cursor: default;
+
+        /* ---------------- 글래스모피즘 컨트롤 패널 ---------------- */
+        .control-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 30px 40px;
+            width: 100%; max-width: 850px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+            margin-bottom: 40px;
+            transition: transform 0.3s ease;
         }
-        .finished .seat.empty {
-            background-color: transparent !important;
-            border: none !important;
-            color: transparent !important;
+
+        .settings-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;
         }
-        .seat.shuffling {
-            animation: bounce 0.4s infinite;
-            background-color: #fff9c4 !important;
-        }
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
-        }
-        .seat.selected-swap {
-            border-color: #f39c12; background-color: #fef5e7;
-            box-shadow: 0 0 15px #f39c12; transform: scale(1.1); z-index: 10;
-        }
-        #controls { display: flex; gap: 12px; margin-bottom: 25px; flex-wrap: wrap; justify-content: center; }
-        button {
-            padding: 12px 20px; font-size: 15px; font-weight: 600;
-            border-radius: 8px; border: none; cursor: pointer; color: white; transition: 0.3s;
-        }
-        #input-mode-button { background-color: #8e44ad; }
-        #random-button { background-color: #27ae60; }
-        #swap-button { background-color: #2980b9; }
-        #complete-button { background-color: #2c3e50; }
-        #reset-button { background-color: #c0392b; }
+
+        /* 입력 폼 스타일링 */
+        .input-group { display: flex; flex-direction: column; gap: 10px; }
+        .input-group label { font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); }
         
-        #input-container {
-            background: white; padding: 25px; border-radius: 15px;
-            display: none; flex-direction: column; gap: 15px;
-            width: 400px; border-top: 5px solid #8e44ad; margin-bottom: 20px;
+        input[type="number"], input[type="text"] {
+            background: #010409; border: 1px solid var(--seat-border);
+            color: var(--text-primary); padding: 12px 16px;
+            border-radius: 10px; font-size: 1rem; font-family: inherit;
+            transition: all 0.3s ease;
         }
+        input[type="number"]:focus, input[type="text"]:focus {
+            outline: none; border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+        }
+
+        /* 파일 업로드 버튼 스타일 */
+        input[type="file"] {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            padding: 8px; border: 1px dashed var(--seat-border); border-radius: 10px;
+            background: rgba(1, 4, 9, 0.5); cursor: pointer;
+        }
+        input[type="file"]::file-selector-button {
+            background: var(--seat-border); color: var(--text-primary);
+            border: none; padding: 6px 12px; border-radius: 6px;
+            margin-right: 10px; cursor: pointer; transition: background 0.2s;
+        }
+        input[type="file"]::file-selector-button:hover { background: var(--seat-hover); }
+
+        .radio-group { display: flex; gap: 20px; align-items: center; height: 100%; }
+        .radio-group label { cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 500; }
+        .radio-group input[type="radio"] { accent-color: var(--accent-purple); transform: scale(1.2); }
+
+        /* ---------------- 버튼 디자인 (네온 스타일) ---------------- */
+        .button-group {
+            display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+            margin-top: 25px; padding-top: 25px; border-top: 1px solid var(--glass-border);
+        }
+        button {
+            padding: 14px 24px; font-size: 1rem; font-weight: 700;
+            border-radius: 12px; border: none; cursor: pointer; color: #fff;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        button:hover:not(:disabled) { transform: translateY(-3px); }
+        button:active:not(:disabled) { transform: translateY(0); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(100%); }
+
+        .btn-apply { background: linear-gradient(135deg, #6e40c9, var(--accent-purple)); width: 100%; margin-top: 20px; box-shadow: 0 8px 20px rgba(163, 113, 247, 0.25); }
+        .btn-apply:hover { box-shadow: 0 12px 25px rgba(163, 113, 247, 0.4); }
+        
+        .btn-random { background: linear-gradient(135deg, #2ea043, var(--accent-green)); box-shadow: 0 6px 15px rgba(63, 185, 80, 0.2); }
+        .btn-swap { background: linear-gradient(135deg, #316dca, var(--accent-blue)); box-shadow: 0 6px 15px rgba(88, 166, 255, 0.2); }
+        .btn-complete { background: linear-gradient(135deg, #484f58, #21262d); border: 1px solid var(--seat-border); }
+        .btn-reset { background: transparent; border: 1px solid var(--accent-red); color: var(--accent-red); }
+        .btn-reset:hover { background: rgba(248, 81, 73, 0.1); }
+
+        /* ---------------- 알림창 (HUD 스타일) ---------------- */
+        #status-bar {
+            background: rgba(56, 139, 253, 0.1); border: 1px solid rgba(56, 139, 253, 0.4);
+            color: var(--accent-blue); padding: 12px 25px; border-radius: 30px;
+            font-weight: 600; margin-bottom: 25px; display: none; backdrop-filter: blur(5px);
+            box-shadow: 0 0 15px rgba(56, 139, 253, 0.1); letter-spacing: 0.5px;
+        }
+
+        /* ---------------- 프린트 영역 (배치도) ---------------- */
+        #print-area {
+            display: flex; flex-direction: column; align-items: center;
+            background: #0d1117; padding: 50px; border-radius: 24px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            visibility: hidden;
+            perspective: 1000px; /* 3D 효과를 위한 원근감 */
+        }
+
+        /* 180도 회전 모드 */
+        #print-area.rotated { transform: rotate(180deg); }
+        #print-area.rotated .seat, 
+        #print-area.rotated #teacher-desk, 
+        #print-area.rotated .row-indicator {
+            transform: rotate(180deg);
+        }
+
+        /* 교탁 */
+        #teacher-desk {
+            width: 180px; height: 50px; 
+            background: linear-gradient(to bottom, #30363d, #21262d);
+            border: 1px solid var(--seat-border); border-top: 3px solid var(--accent-blue);
+            color: var(--text-primary); display: flex; justify-content: center; align-items: center;
+            border-radius: 8px; font-weight: 800; font-size: 1.2rem;
+            margin-bottom: 40px; letter-spacing: 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3); transition: transform 0.8s;
+        }
+
+        /* 그리드 설정 */
+        #seating-chart { display: grid; gap: 12px; }
+        .grid-normal { grid-template-columns: repeat(8, 75px); }
+        .grid-exam { grid-template-columns: repeat(9, 75px); }
+
+        /* 개별 자리 (Cyberpunk / Modern Dark 컨셉) */
+        .seat {
+            width: 75px; height: 60px; display: flex;
+            justify-content: center; align-items: center;
+            background: var(--seat-bg); border: 1px solid var(--seat-border);
+            border-radius: 12px; font-weight: 700; font-size: 1.15rem; color: #fff;
+            cursor: pointer; position: relative; overflow: hidden;
+            transition: all 0.2s ease;
+            box-shadow: inset 0 2px 0 rgba(255,255,255,0.05), 0 4px 6px rgba(0,0,0,0.2);
+        }
+        
+        .seat::before { /* 은은한 위쪽 빛 반사 효과 */
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 50%;
+            background: linear-gradient(rgba(255,255,255,0.03), transparent);
+            border-radius: 12px 12px 0 0; pointer-events: none;
+        }
+
+        .seat:hover:not(.empty) {
+            background: var(--seat-hover); border-color: var(--text-secondary);
+            box-shadow: 0 0 15px rgba(255,255,255,0.1), inset 0 2px 0 rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+        }
+
+        /* 통로 */
+        .seat.empty {
+            background: transparent; border: 1px dashed #30363d;
+            color: #484f58; font-size: 0.85rem; cursor: default; box-shadow: none;
+        }
+
+        /* 완료 상태에서 통로 투명화 */
+        #print-area.finished .seat.empty {
+            border: none !important; color: transparent !important;
+        }
+
+        /* 애니메이션 효과 */
+        .seat.shuffling {
+            animation: glitch 0.3s infinite;
+            background: rgba(163, 113, 247, 0.2); border-color: var(--accent-purple); color: var(--accent-purple);
+            box-shadow: 0 0 20px rgba(163, 113, 247, 0.4);
+        }
+        @keyframes glitch {
+            0% { transform: translate(0) scale(1); }
+            20% { transform: translate(-2px, 2px) scale(0.95); }
+            40% { transform: translate(-2px, -2px) scale(1.05); }
+            60% { transform: translate(2px, 2px) scale(1); }
+            80% { transform: translate(2px, -2px) scale(0.95); }
+            100% { transform: translate(0) scale(1.05); }
+        }
+
+        .seat.selected-swap {
+            border-color: var(--accent-red); background: rgba(248, 81, 73, 0.15); color: var(--accent-red);
+            box-shadow: 0 0 0 2px var(--accent-red), 0 0 20px rgba(248, 81, 73, 0.4) !important;
+            transform: scale(1.1); z-index: 10;
+        }
+
         .row-indicator {
-            text-align: center; font-size: 0.9em; color: #7f8c8d; 
-            padding: 15px 0 5px; border-bottom: 1px solid #eee; margin-bottom: 5px;
+            text-align: center; font-size: 0.8rem; color: #484f58; 
+            padding: 15px 0 5px; border-bottom: 1px solid #21262d; margin-bottom: 8px;
+            transition: transform 0.8s; font-weight: 600; letter-spacing: 3px;
+            text-transform: uppercase;
         }
         .normal-span { grid-column: 1 / span 8; }
         .exam-span { grid-column: 1 / span 9; }
-        #status { font-weight: bold; color: #2c3e50; margin-bottom: 10px; }
+
+        /* 🖨️ 인쇄 모드 최적화 (다크모드 -> 화이트 잉크 절약 모드로 자동 변환) */
+        @media print {
+            body { background: white !important; color: black !important; padding: 0; margin: 0; }
+            .no-print, .control-panel, h1, #status-bar { display: none !important; }
+            #print-area { 
+                background: white !important; box-shadow: none !important; border: none !important; 
+                padding: 0 !important; transform-origin: center; margin-top: 20mm;
+            }
+            #teacher-desk { 
+                background: #f1f1f1 !important; color: black !important; 
+                border: 2px solid black !important; box-shadow: none !important;
+            }
+            .seat { 
+                background: white !important; color: black !important; 
+                border: 2px solid #333 !important; box-shadow: none !important;
+            }
+            .seat.empty { border: 1px dashed #ccc !important; color: #ccc !important; }
+            #print-area.finished .seat.empty { border: none !important; color: transparent !important; }
+            .row-indicator { color: #666 !important; border-bottom-color: #eee !important; }
+            
+            /* 프린터 강제 여백 및 배경 인쇄 설정 제어 */
+            @page { margin: 10mm; }
+        }
     </style>
 </head>
 <body>
 
-    <h1>🏫 학급 자리 배치 </h1>
+    <h1>🚀 Premium Seating System</h1>
 
-    <div id="controls">
-        <button id="input-mode-button" onclick="toggleInputMode()">⚙️ 설정</button>
-        <button id="random-button" onclick="shuffleAllSeats()" disabled>🎲 랜덤 섞기</button>
-        <button id="swap-button" onclick="toggleSwapMode()" disabled>🔄 교환</button>
-        <button id="complete-button" onclick="finishSelection()" disabled>✅ 완료(투명통로)</button>
-        <button id="reset-button" onclick="location.reload()">↺ 초기화</button>
-    </div>
-
-    <div id="input-container">
-        <label><b>1. 배치 유형 선택</b></label>
-        <div>
-            <label><input type="radio" name="layout" value="normal" checked> 일반형 </label>
-            <label><input type="radio" name="layout" value="exam"> 모의고사형 </label>
+    <div class="control-panel no-print" id="control-panel">
+        <div class="settings-grid">
+            <div class="input-group">
+                <label>배치 유형 (Grid Type)</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="layout" value="normal" checked> 일반(8열)</label>
+                    <label><input type="radio" name="layout" value="exam"> 시험(9열)</label>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>마지막 번호 (End Number)</label>
+                <input type="number" id="total-end-number" value="31" min="1">
+            </div>
+            <div class="input-group">
+                <label>제외 번호 (Exclude)</label>
+                <input type="text" id="exclude-numbers" placeholder="예: 5, 12">
+            </div>
+            <div class="input-group">
+                <label>엑셀 명단 업로드 (Excel Data)</label>
+                <input type="file" id="excel-upload" accept=".xlsx, .xls, .csv">
+            </div>
         </div>
-        <hr>
-        <label for="total-end-number"><b>2. 학생 마지막 번호</b></label>
-        <input type="number" id="total-end-number" value="31" min="1">
-        <label for="exclude-numbers"><b>3. 제외할 번호</b></label>
-        <input type="text" id="exclude-numbers" placeholder="예: 5, 12">
-        <button onclick="applySettings()" style="background-color: #27ae60; margin-top:10px;">적용하기</button>
+        <button class="btn-apply" onclick="applySettings()">✨ 시스템 가동 및 배치 생성</button>
+
+        <div class="button-group">
+            <button class="btn-random" id="random-button" onclick="shuffleAllSeats()" disabled>🎲 랜덤 셔플</button>
+            <button class="btn-swap" id="swap-button" onclick="toggleSwapMode()" disabled>🔄 타겟 교환</button>
+            <button class="btn-complete" id="complete-button" onclick="finishSelection()" disabled>🖨️ 인쇄 (180° 회전)</button>
+            <button class="btn-reset" onclick="location.reload()">⎌ 시스템 리셋</button>
+        </div>
     </div>
 
-    <div id="status">설정을 완료해주세요.</div>
+    <div id="status-bar"></div>
 
-    <div id="teacher-desk" style="display: none;">교 탁</div>
-
-    <div id="seating-chart"></div>
+    <div id="print-area">
+        <div id="teacher-desk">TEACHER</div>
+        <div id="seating-chart"></div>
+    </div>
 
     <script>
+        let studentNames = {}; 
         let allSeatNumbers = [];
         let seatingMap = [];
         let isSwapMode = false;
         let firstSelected = null;
         let currentLayout = 'normal';
 
-        function toggleInputMode() {
-            const container = document.getElementById('input-container');
-            container.style.display = (container.style.display === 'flex') ? 'none' : 'flex';
-        }
+        // 엑셀 로직
+        document.getElementById('excel-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1}); 
+                    
+                    studentNames = {}; 
+                    let count = 0;
+                    
+                    jsonData.forEach(row => {
+                        if (row.length >= 2) {
+                            const num = parseInt(row[0]);
+                            const name = row[1];
+                            if (!isNaN(num) && name) {
+                                studentNames[num] = name.toString().trim();
+                                count++;
+                            }
+                        }
+                    });
+                    
+                    const status = document.getElementById('status-bar');
+                    status.style.display = 'block';
+                    if(count > 0) {
+                        status.textContent = `📁 ${count}명의 엑셀 데이터를 로드했습니다.`;
+                        status.style.background = 'rgba(63, 185, 80, 0.1)'; status.style.color = 'var(--accent-green)';
+                        status.style.borderColor = 'rgba(63, 185, 80, 0.4)';
+                    } else {
+                        status.textContent = '⚠️ 명단 인식 실패. A열(번호), B열(이름)을 확인하세요.';
+                        status.style.background = 'rgba(248, 81, 73, 0.1)'; status.style.color = 'var(--accent-red)';
+                    }
+                } catch (err) {
+                    alert('파일 오류 발생');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
 
         function applySettings() {
             const endNum = parseInt(document.getElementById('total-end-number').value);
@@ -137,18 +362,22 @@
             }
 
             buildMap(allSeatNumbers);
-            const chart = document.getElementById('seating-chart');
-            const desk = document.getElementById('teacher-desk');
-            chart.style.visibility = 'visible';
-            desk.style.display = 'flex';
-            chart.className = currentLayout === 'exam' ? 'grid-exam' : 'grid-normal';
-            chart.classList.remove('finished');
+            
+            const printArea = document.getElementById('print-area');
+            const status = document.getElementById('status-bar');
+            
+            printArea.style.visibility = 'visible';
+            printArea.classList.remove('finished', 'rotated');
+            document.getElementById('seating-chart').className = currentLayout === 'exam' ? 'grid-exam' : 'grid-normal';
             
             document.getElementById('random-button').disabled = false;
             document.getElementById('swap-button').disabled = false;
             document.getElementById('complete-button').disabled = false;
-            document.getElementById('status').textContent = `✅ 번호 배치가 준비되었습니다.`;
-            toggleInputMode();
+            
+            status.style.display = 'block';
+            status.textContent = `✅ 시스템 가동 완료. (활성 좌석: ${allSeatNumbers.length}석)`;
+            status.style.background = 'rgba(56, 139, 253, 0.1)'; status.style.color = 'var(--accent-blue)';
+            status.style.borderColor = 'rgba(56, 139, 253, 0.4)';
         }
 
         function buildMap(numbers) {
@@ -202,11 +431,13 @@
             seatingMap.forEach((row, r) => {
                 const indicator = document.createElement('div');
                 indicator.className = `row-indicator ${spanClass}`;
-                indicator.textContent = `─── ${r + 1}분단 ───`;
+                indicator.textContent = `── ROW ${r + 1} ──`;
                 chart.appendChild(indicator);
+                
                 row.forEach((cell, c) => {
                     const div = document.createElement('div');
                     div.className = 'seat';
+                    
                     if (cell === 'EMPTY') {
                         div.classList.add('empty');
                         div.textContent = '통로';
@@ -214,8 +445,9 @@
                         div.classList.add('empty');
                         div.textContent = '';
                     } else {
-                        // 이름을 출력하는 대신 cell(번호)를 그대로 출력
-                        div.textContent = cell;
+                        const displayText = studentNames[cell] ? studentNames[cell] : cell;
+                        div.textContent = displayText;
+                        
                         div.dataset.row = r; div.dataset.col = c;
                         div.onclick = handleSeatClick;
                     }
@@ -229,6 +461,7 @@
             const div = e.currentTarget;
             const r = parseInt(div.dataset.row);
             const c = parseInt(div.dataset.col);
+            
             if (!firstSelected) {
                 firstSelected = { r, c, div };
                 div.classList.add('selected-swap');
@@ -243,40 +476,78 @@
 
         function shuffleAllSeats() {
             const btn = document.getElementById('random-button');
-            const chart = document.getElementById('seating-chart');
-            chart.classList.remove('finished');
+            const printArea = document.getElementById('print-area');
+            const status = document.getElementById('status-bar');
+            
+            printArea.classList.remove('finished', 'rotated');
+            status.textContent = "⚡ 양자 난수 생성 중... (Shuffling)";
+            status.style.background = 'rgba(163, 113, 247, 0.1)'; status.style.color = 'var(--accent-purple)';
+            status.style.borderColor = 'rgba(163, 113, 247, 0.4)';
+            
             btn.disabled = true;
             document.querySelectorAll('.seat:not(.empty)').forEach(s => {
                 s.classList.add('shuffling'); s.textContent = '?';
             });
+            
             setTimeout(() => {
                 const shuffled = [...allSeatNumbers].sort(() => Math.random() - 0.5);
                 buildMap(shuffled);
                 btn.disabled = false;
+                status.textContent = "✅ 새로운 좌석 배치가 완료되었습니다.";
+                status.style.background = 'rgba(56, 139, 253, 0.1)'; status.style.color = 'var(--accent-blue)';
+                status.style.borderColor = 'rgba(56, 139, 253, 0.4)';
             }, 800);
         }
 
         function toggleSwapMode() {
             isSwapMode = !isSwapMode;
-            document.getElementById('seating-chart').classList.remove('finished');
+            document.getElementById('print-area').classList.remove('finished', 'rotated');
             firstSelected = null;
+            
             const btn = document.getElementById('swap-button');
-            btn.style.backgroundColor = isSwapMode ? '#f39c12' : '#2980b9';
-            btn.textContent = isSwapMode ? '🚫 취소' : '🔄 교환';
-            document.querySelectorAll('.seat').forEach(s => s.classList.remove('selected-swap'));
+            const status = document.getElementById('status-bar');
+            
+            if (isSwapMode) {
+                btn.style.background = 'linear-gradient(135deg, #d73a49, var(--accent-red))';
+                btn.style.boxShadow = '0 6px 15px rgba(248, 81, 73, 0.3)';
+                btn.textContent = '🚫 타겟 교환 취소';
+                status.textContent = "🎯 맞바꿀 두 대상의 좌석을 차례로 클릭하세요.";
+                status.style.background = 'rgba(248, 81, 73, 0.1)'; status.style.color = 'var(--accent-red)';
+                status.style.borderColor = 'rgba(248, 81, 73, 0.4)';
+            } else {
+                btn.style.background = 'linear-gradient(135deg, #316dca, var(--accent-blue))';
+                btn.style.boxShadow = '0 6px 15px rgba(88, 166, 255, 0.2)';
+                btn.textContent = '🔄 타겟 교환';
+                status.textContent = "✅ 수동 교환이 종료되었습니다.";
+                status.style.background = 'rgba(56, 139, 253, 0.1)'; status.style.color = 'var(--accent-blue)';
+                status.style.borderColor = 'rgba(56, 139, 253, 0.4)';
+                document.querySelectorAll('.seat').forEach(s => s.classList.remove('selected-swap'));
+            }
         }
 
         function finishSelection() {
-            const chart = document.getElementById('seating-chart');
-            const isNowFinished = chart.classList.toggle('finished');
+            const printArea = document.getElementById('print-area');
+            const status = document.getElementById('status-bar');
+            
+            const isNowFinished = printArea.classList.toggle('finished');
+            printArea.classList.toggle('rotated');
+            
             if (isNowFinished) {
-                document.getElementById('status').textContent = "📌 최종 번호 배치도 확정";
+                status.textContent = "🖨️ 프린트 모드: 통로 숨김 & 180도 회전 (Ctrl+P를 눌러 인쇄하세요)";
+                status.style.background = 'rgba(255, 255, 255, 0.1)'; status.style.color = '#fff';
+                status.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                
                 isSwapMode = false;
+                const swapBtn = document.getElementById('swap-button');
+                swapBtn.style.background = 'linear-gradient(135deg, #316dca, var(--accent-blue))';
+                swapBtn.style.boxShadow = '0 6px 15px rgba(88, 166, 255, 0.2)';
+                swapBtn.textContent = '🔄 타겟 교환';
             } else {
-                document.getElementById('status').textContent = "🛠 수정 모드 (통로 보임)";
+                status.textContent = "🛠 시스템 제어 모드로 복귀했습니다.";
+                status.style.background = 'rgba(56, 139, 253, 0.1)'; status.style.color = 'var(--accent-blue)';
+                status.style.borderColor = 'rgba(56, 139, 253, 0.4)';
             }
         }
     </script>
 </body>
 </html>
-
